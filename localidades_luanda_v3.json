@@ -1,39 +1,19 @@
 {
-  "Luanda": {
-    "Cacuaco": {
-      "Cacuaco": [],
-      "Kikolo": []
-    },
-    "Cazenga": {
-      "Cazenga": [],
-      "Kima Kieza": []
-    },
-    "Viana": {},
-    "Belas": {
-      "Barra do Cuanza": [],
-      "Cabolombo": [],
-      "Ramiros": []
-    },
-    "Kilamba Kiaxi": {
-      "Golfe": [],
-      "Nova Vida": []
-    },
-    "Talatona": {
-      "Talatona": [],
-      "Benfica": []
-    },
-    "Kilamba": {
-      "Kilamba": [],
-      "Vila Flor": []
-    },
-    "Camama": {},
-    "Ingombota": {},
-    "Sambizanga": {},
-    "Rangel": {},
-    "Maianga": {},
-    "Samba": {},
-    "Mussulo": {},
-    "Hoji Ya Henda": {},
-    "Mulenvos": {}
-  }
+  "Belas": ["Barra do Cuanza", "Cabolombo", "Ramiros"],
+  "Cacuaco": ["Cacuaco", "Kikolo"],
+  "Cazenga": ["Cazenga", "Kima Kieza"],
+  "Camama": [],
+  "Hoji Ya Henda": [],
+  "Ingombota": [],
+  "Kilamba": ["Kilamba", "Vila Flor"],
+  "Kilamba Kiaxi": ["Golfe", "Nova Vida"],
+  "Maianga": [],
+  "Mulenvos": [],
+  "Mussulo": [],
+  "Rangel": [],
+  "Samba": [],
+  "Sambizanga": [],
+  "Talatona": ["Talatona", "Benfica"],
+  "Viana": []
 }
+
