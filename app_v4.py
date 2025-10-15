@@ -1,3 +1,13 @@
+import subprocess
+import sys
+
+# 🔧 Instala o reportlab automaticamente se faltar
+try:
+    from reportlab.lib.pagesizes import A4
+except ModuleNotFoundError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "reportlab"])
+    from reportlab.lib.pagesizes import A4
+
 import streamlit as st
 import pandas as pd
 import json
