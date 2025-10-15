@@ -1,85 +1,52 @@
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import cm
-from reportlab.lib.utils import ImageReader
+from fpdf import FPDF
 import os
 
-def gerar_recibo_mpla(militante):
-    nome = f"{militante['Primeiro Nome']} {militante['Último Nome']}"
-    cap = militante["Nº CAP"]
-    municipio = militante["Município"]
-    comuna = militante["Comuna"]
-    bairro = militante["Bairro"]
+class PDFRecibo(FPDF):
+    def header(self):
+        # Cabeçalho com bandeira e emblema
+        try:
+            self.image("Flag_of_MPLA.svg.png", 10, 8, 25)
+            self.image("EMBLEMA_MPLA (1).jpg", 170, 8, 25)
+        except:
+            pass
 
-    # Nome do ficheiro PDF
-    nome_pdf = f"Recibo_{cap}.pdf"
-    c = canvas.Canvas(nome_pdf, pagesize=A4)
+        self.set_font("Arial", "B", 14)
+        self.cell(0, 10, "MOVIMENTO POPULAR DE LIBERTAÇÃO DE ANGOLA (MPLA)", 0, 1, "C")
+        self.set_font("Arial", "B", 12)
+        self.cell(0, 10, "RECIBO OFICIAL DO MILITANTE", 0, 1, "C")
+        self.ln(10)
 
-    largura, altura = A4
-    margem = 2 * cm
-    y = altura - 2 * cm
+    def footer(self):
+        self.set_y(-15)
+        self.set_font("Arial", "I", 9)
+        self.cell(0, 10, "Servir o Povo e Fazer Angola Crescer", 0, 0, "C")
 
-    # Cabeçalho com bandeira à esquerda e emblema à direita
-    try:
-        bandeira = ImageReader("Flag_of_MPLA.svg.png")
-        c.drawImage(bandeira, margem, y - 40, width=100, height=50)
-    except:
-        pass
+def gerar_recibo_mpla(dados, output_path="recibo_mpla.pdf"):
+    pdf = PDFRecibo()
+    pdf.add_page()
+    pdf.set_font("Arial", "", 11)
 
-    c.setFont("Helvetica-Bold", 16)
-    c.drawCentredString(largura / 2, y - 20, "MPLA")
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(largura / 2, y - 35, "Movimento Popular de Libertação de Angola")
+    foto_path = "foto_generica.jpg"
+    if os.path.exists(foto_path):
+        pdf.image(foto_path, 160, 45, 30, 35)
 
-    try:
-        emblema = ImageReader("EMBLEMA_MPLA (1).jpg")
-        c.drawImage(emblema, largura - 4 * cm, y - 40, width=80, height=50)
-    except:
-        pass
+    campos = [
+        ("Nome Completo", f"{dados.get('primeiro_nome', '')} {dados.get('ultimo_nome', '')}"),
+        ("Nº CAP", dados.get("cap", "")),
+        ("Telefone", dados.get("telefone", "")),
+        ("Cartão de Eleitor", dados.get("cartao", "")),
+        ("Município", dados.get("municipio", "")),
+        ("Comuna", dados.get("comuna", "")),
+        ("Bairro", dados.get("bairro", "")),
+    ]
 
-    y -= 80
-    c.setLineWidth(1)
-    c.line(margem, y, largura - margem, y)
-    y -= 20
+    for campo, valor in campos:
+        pdf.cell(50, 8, f"{campo}:", 0, 0)
+        pdf.cell(0, 8, valor, 0, 1)
 
-    # Título
-    c.setFont("Helvetica-Bold", 13)
-    c.drawCentredString(largura / 2, y, "RECIBO OFICIAL DO MILITANTE")
-    y -= 30
+    pdf.ln(10)
+    pdf.cell(0, 8, "_____________________________", 0, 1, "L")
+    pdf.cell(0, 8, "Secretário do CAP / Responsável de Organização", 0, 1, "L")
 
-    # Foto
-    try:
-        foto = ImageReader("foto_generica.jpg")
-        c.drawImage(foto, margem, y - 80, width=90, height=90)
-    except:
-        pass
-
-    # Dados principais
-    x_texto = margem + 100
-    c.setFont("Helvetica", 11)
-    c.drawString(x_texto, y, f"Nome do Militante: {nome}")
-    y -= 20
-    c.drawString(x_texto, y, f"Nº CAP: {cap}")
-    y -= 20
-    c.drawString(x_texto, y, f"Município: {municipio}")
-    y -= 20
-    c.drawString(x_texto, y, f"Comuna: {comuna}")
-    y -= 20
-    c.drawString(x_texto, y, f"Bairro: {bairro}")
-    y -= 40
-
-    # Rodapé
-    c.setFont("Helvetica-Oblique", 10)
-    c.drawString(margem, y, "Secretário do CAP / Responsável de Organização")
-    y -= 40
-    c.drawCentredString(largura / 2, y, "Servir o Povo e Fazer Angola Crescer")
-    y -= 20
-    c.line(margem, y, largura - margem, y)
-
-    c.showPage()
-    c.save()
-
-    if os.path.exists(nome_pdf):
-        print(f"✅ Recibo gerado com sucesso: {nome_pdf}")
-    else:
-        print("⚠️ Erro ao gerar o recibo.")
+    pdf.output(output_path)
+    return output_path
