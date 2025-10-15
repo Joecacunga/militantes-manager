@@ -2,10 +2,7 @@ import pandas as pd
 import json
 import os
 from io import BytesIO
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
-from reportlab.lib.units import cm
-
+from fpdf import FPDF
 BASE_DADOS_JSON = "base_militantes.json"
 
 # ============================
