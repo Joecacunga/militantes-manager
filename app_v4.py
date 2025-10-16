@@ -4,157 +4,131 @@ import json
 from utils_v4 import (
     carregar_base_dados,
     guardar_base_dados,
-    gerar_recibo_militante_pdf,
+    adicionar_militante,
+    remover_registro,
+    atualizar_registro,
     importar_dados_excel,
     importar_dados_texto,
     exportar_para_excel,
-    remover_registro,
-    atualizar_registro,
+    gerar_recibo_militante_pdf,
+    carregar_localidades,
+    obter_comunas_por_municipio,
 )
 
-# ========================
-# CONFIGURAÇÕES GERAIS
-# ========================
-st.set_page_config(
-    page_title="Gestão de Militantes MPLA v4",
-    page_icon="🇦🇴",
-    layout="wide"
-)
+# =====================================================
+# 🔸 Cabeçalho e inicialização
+# =====================================================
 
-st.title("🟥🟨⬛ Gestão de Militantes MPLA v4")
-st.markdown("### Servir o Povo e Fazer Angola Crescer")
+st.set_page_config(page_title="Gestão de Militantes MPLA v4.1", layout="wide")
+st.title("🟥🟨⬛ Gestão de Militantes MPLA v4.1")
+st.caption("Servir o Povo e Fazer Angola Crescer")
 
-# ========================
-# CARREGAR LOCALIDADES
-# ========================
-try:
-    with open("localidades_luanda_v3.json", "r", encoding="utf-8") as f:
-        localidades = json.load(f)
-except Exception:
-    localidades = {}
+# Carregar base e localidades
+base = carregar_base_dados()
+localidades = carregar_localidades()
 
-# ========================
-# CARREGAR BASE DE DADOS
-# ========================
-df = carregar_base_dados()
+menu = st.sidebar.radio("📋 Menu", ["Formulário", "Base de Dados", "Gerar Recibo"])
 
-# ========================
-# MENU PRINCIPAL
-# ========================
-menu = st.sidebar.radio("📋 Menu", ["➕ Novo Militante", "📂 Base de Dados", "📥 Importar Dados", "📤 Exportar Dados", "📑 Recibos"])
+# =====================================================
+# 🔸 1. FORMULÁRIO
+# =====================================================
 
-# ========================
-# 1️⃣ NOVO MILITANTE
-# ========================
-if menu == "➕ Novo Militante":
-    st.header("➕ Formulário de Registo de Militante")
-    with st.form("novo_militante"):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            primeiro_nome = st.text_input("Nome(s) Próprio(s)")
-        with col2:
-            ultimo_nome = st.text_input("Último Nome")
-        with col3:
-            numero_cap = st.text_input("Nº CAP (ex: CAP001)").upper()
+if menu == "Formulário":
+    st.header("➕ Registar Novo Militante")
 
-        telefone = st.text_input("Telefone (9 dígitos)").strip()
-        cartao = st.text_input("Nº do Cartão de Militante").strip()
+    col1, col2 = st.columns(2)
+    with col1:
+        primeiro_nome = st.text_input("Nome(s) Próprio(s)")
+        ultimo_nome = st.text_input("Último Nome")
+        cap = st.text_input("Nº CAP", placeholder="Ex: CAP001")
+        telefone = st.text_input("Telefone", placeholder="Ex: 923456789")
 
+    with col2:
+        cartao = st.text_input("Nº de Cartão de Eleitor")
         provincia = st.selectbox("Província", ["Luanda"])
         municipio = st.selectbox("Município", list(localidades.keys()))
-        comunas = localidades.get(municipio, [])
+
+        comunas = obter_comunas_por_municipio(municipio, localidades)
         if comunas:
             comuna = st.selectbox("Comuna", comunas)
         else:
-            st.info("📍 Este município não possui comunas. Introduza o bairro manualmente.")
-            comuna = st.text_input("Comuna (manual)").strip()
-        bairro = st.text_input("Bairro (manual)").strip()
+            comuna = st.text_input("Comuna (manual)", "")
 
-        submit = st.form_submit_button("💾 Guardar Registo")
+        bairro = st.text_input("Bairro")
 
-        if submit:
-            novo_registro = {
-                "Primeiro Nome": primeiro_nome,
-                "Último Nome": ultimo_nome,
-                "Nº CAP": numero_cap,
-                "Telefone": telefone,
-                "Cartão": cartao,
-                "Província": provincia,
-                "Município": municipio,
-                "Comuna": comuna,
-                "Bairro": bairro
-            }
-            if primeiro_nome and ultimo_nome and numero_cap:
-                df = guardar_base_dados(df, novo_registro)
-                st.success(f"✅ Militante {primeiro_nome} {ultimo_nome} registado com sucesso!")
-            else:
-                st.error("⚠️ Preencha todos os campos obrigatórios.")
+    if st.button("💾 Guardar Militante"):
+        novo_militante = {
+            "primeiro_nome": primeiro_nome,
+            "ultimo_nome": ultimo_nome,
+            "cap": cap,
+            "telefone": telefone,
+            "cartao": cartao,
+            "provincia": provincia,
+            "municipio": municipio,
+            "comuna": comuna,
+            "bairro": bairro,
+        }
+        base = adicionar_militante(base, novo_militante)
+        st.success("✅ Militante registado com sucesso!")
+        st.experimental_rerun()
 
-# ========================
-# 2️⃣ BASE DE DADOS
-# ========================
-elif menu == "📂 Base de Dados":
-    st.header("📂 Base de Dados de Militantes")
-    st.dataframe(df, use_container_width=True)
+# =====================================================
+# 🔸 2. BASE DE DADOS
+# =====================================================
 
-    st.subheader("✏️ Editar / Eliminar Registos")
-    col1, col2 = st.columns(2)
-    with col1:
-        id_registro = st.number_input("ID do Registo", min_value=0, step=1)
-    with col2:
-        acao = st.radio("Ação", ["Editar", "Eliminar"])
+elif menu == "Base de Dados":
+    st.header("📁 Base de Dados de Militantes")
+    df = pd.DataFrame(base)
 
-    if acao == "Editar":
-        st.info("⚙️ Introduza os novos dados abaixo:")
-        novo_nome = st.text_input("Novo Nome Próprio")
-        novo_apelido = st.text_input("Novo Último Nome")
-        if st.button("💾 Atualizar"):
-            df = atualizar_registro(df, id_registro, novo_nome, novo_apelido)
-            st.success("✅ Registo atualizado com sucesso!")
+    if not df.empty:
+        st.dataframe(df, use_container_width=True)
+
+        id_edit = st.text_input("Digite o ID para editar")
+        if id_edit:
+            militante = next((m for m in base if m.get("id") == id_edit), None)
+            if militante:
+                st.subheader("✏️ Editar Registo")
+                for chave in militante.keys():
+                    novo_valor = st.text_input(chave, militante[chave])
+                    militante[chave] = novo_valor
+
+                if st.button("💾 Atualizar"):
+                    atualizar_registro(base, id_edit, militante)
+                    st.success("Registo atualizado!")
+                    st.experimental_rerun()
+
+        id_del = st.text_input("Digite o ID para eliminar")
+        if id_del and st.button("🗑️ Eliminar"):
+            base = remover_registro(base, id_del)
+            st.warning("Registo eliminado!")
+            st.experimental_rerun()
+
+        st.divider()
+        if st.button("📤 Exportar Excel"):
+            arquivo = exportar_para_excel(base)
+            with open(arquivo, "rb") as f:
+                st.download_button("⬇️ Baixar Base Excel", f, file_name="Base_Militantes.xlsx")
+
     else:
-        if st.button("🗑️ Eliminar"):
-            df = remover_registro(df, id_registro)
-            st.warning("❌ Registo eliminado com sucesso!")
+        st.info("Nenhum militante registado ainda.")
 
-# ========================
-# 3️⃣ IMPORTAR DADOS
-# ========================
-elif menu == "📥 Importar Dados":
-    st.header("📥 Importar Dados")
+# =====================================================
+# 🔸 3. GERAR RECIBO
+# =====================================================
 
-    tab1, tab2 = st.tabs(["📂 Ficheiro Excel", "📋 Colar Dados"])
-    with tab1:
-        file = st.file_uploader("Carregar ficheiro (.xlsx / .csv)", type=["xlsx", "csv"])
-        if file:
-            df = importar_dados_excel(df, file)
-            st.success("✅ Dados importados com sucesso!")
+elif menu == "Gerar Recibo":
+    st.header("🧾 Gerar Recibo Oficial do Militante")
 
-    with tab2:
-        texto = st.text_area("Colar dados (usar separador TAB ou |)")
-        if st.button("📥 Processar Colagem"):
-            df = importar_dados_texto(df, texto)
-            st.success("✅ Colagem processada com sucesso!")
+    if base:
+        nomes = [f"{m['id']} - {m['primeiro_nome']} {m['ultimo_nome']}" for m in base]
+        escolha = st.selectbox("Selecione o Militante", nomes)
 
-# ========================
-# 4️⃣ EXPORTAR DADOS
-# ========================
-elif menu == "📤 Exportar Dados":
-    st.header("📤 Exportar Dados")
-    if st.button("💾 Exportar para Excel"):
-        exportar_para_excel(df)
-        st.success("✅ Ficheiro Excel gerado com sucesso!")
-
-# ========================
-# 5️⃣ RECIBOS
-# ========================
-elif menu == "📑 Recibos":
-    st.header("📑 Emitir Recibo Oficial do Militante")
-    if len(df) == 0:
-        st.warning("⚠️ Ainda não existem registos.")
+        if st.button("📄 Gerar Recibo PDF"):
+            militante_id = escolha.split(" - ")[0]
+            militante = next((m for m in base if m["id"] == militante_id), None)
+            if militante:
+                pdf_path = gerar_recibo_militante_pdf(militante)
+                with open(pdf_path, "rb") as f:
+                    st.download_button("⬇️ Baixar Recibo PDF", f, file_name=pdf_path)
     else:
-        nomes = df["Primeiro Nome"] + " " + df["Último Nome"]
-        nome_selecionado = st.selectbox("Selecionar Militante", nomes)
-        if st.button("🧾 Gerar Recibo"):
-            militante = df.iloc[nomes[nomes == nome_selecionado].index[0]]
-            gerar_recibo_pdf(militante)
-            st.success("✅ Recibo gerado com sucesso! Verifique a pasta de saída.")
+        st.warning("Nenhum militante disponível para gerar recibo.")
