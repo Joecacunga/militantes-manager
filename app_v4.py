@@ -1,6 +1,7 @@
-# app_v4.py
+# app_v4.py  (versão v4.3)
 import streamlit as st
 import pandas as pd
+import os
 from utils_v4 import (
     carregar_base_dados,
     adicionar_militante,
@@ -14,11 +15,16 @@ from utils_v4 import (
     obter_comunas_por_municipio,
 )
 
-st.set_page_config(page_title="Gestão de Militantes MPLA v4", layout="wide")
-st.title("🟥🟨⬛ Gestão de Militantes MPLA v4")
-st.caption("Servir o Povo e Fazer Angola Crescer")
+# Configuração da página
+st.set_page_config(page_title="Gestão de Militantes MPLA v4.3", layout="wide")
+# Banner / cabeçalho com a bandeira real (se existir)
+if os.path.exists("Flag_of_MPLA.svg.png"):
+    st.image("Flag_of_MPLA.svg.png", use_column_width=True)
 
-# Carregar base e localidades
+st.title("🟥🟨⬛ Gestão de Militantes MPLA v4.3")
+st.markdown("**MPLA — Servir o Povo e Fazer Angola Crescer**")
+
+# Carregar dados
 base = carregar_base_dados()
 localidades = carregar_localidades()
 
@@ -27,28 +33,22 @@ menu = st.sidebar.radio("Menu", ["Formulário", "Base de Dados", "Importar/Colar
 # ---------- FORMULÁRIO --------------
 if menu == "Formulário":
     st.header("Formulário Individual de Militante")
-
     with st.form("form_militante"):
         c1, c2 = st.columns(2)
         with c1:
-            numero = st.text_input("Nº (registro interno)")
+            # Nota: registro_interno mostrado (readonly) após preencher CAP (ver abaixo)
             primeiro_nome = st.text_input("Nome(s) Próprio(s)")
             ultimo_nome = st.text_input("Último Nome")
             data_nascimento = st.text_input("Data de Nascimento (DD/MM/AAAA)")
-            comuna_distrito = st.text_input("Comuna/Distrito Urbano")
-            municipio = st.selectbox("Município", list(localidades.keys()))
-            provincia = st.selectbox("Província", ["Luanda"])
             bi_numero = st.text_input("Portador do B.I Nº")
             arquivo_identificacao = st.text_input("Arquivo de identificação")
             estado_civil = st.text_input("Estado civil")
-            cartao = st.text_input("Número do Cartão de Eleitor")
-            grupo = st.text_input("Grupo")
+            # removidos: Cartão de Eleitor, Grupo
             local_trabalho = st.text_input("Local de trabalho")
             habilitacoes = st.text_input("Habilitações Literárias")
             profissao = st.text_input("Verdadeira profissão")
         with c2:
-            ocupacao = st.text_input("Ocupação actual")
-            morada = st.text_input("Morada")
+            municipio = st.selectbox("Município", list(localidades.keys()))
             comunas = obter_comunas_por_municipio(municipio, localidades)
             if comunas:
                 comuna = st.selectbox("Comuna", comunas)
@@ -67,55 +67,58 @@ if menu == "Formulário":
 
             st.markdown("📸 **Fotografia do Militante**")
             foto_camera = st.camera_input("Tirar Foto (opcional)")
-            foto_path_manual = st.text_input("Ou indicar caminho/nome da foto (opcional)")
 
         cap_field = st.text_input("Nº CAP (Ex: CAP041)")
 
+        # Mostrar número interno (readonly) gerado a partir da cap atual
+        registro_preview = ""
+        if cap_field.strip():
+            registro_preview = None
+            # calcula preview localmente (sem adicionar)
+            registro_preview = f"REG-{cap_field.strip().upper()}-{(sum(1 for m in base if (m.get('cap') or '').strip().upper()==cap_field.strip().upper()) + 1):04d}"
+            st.info(f"Nº interno (gerado por CAP): {registro_preview}")
+
         submitted = st.form_submit_button("💾 Guardar Militante")
         if submitted:
-            foto_salva = foto_path_manual or "foto_generica.jpg"
-            # se foto da camera foi tirada, gravar com nome baseado no CAP se existir
-            if foto_camera is not None:
-                nome_foto = (cap_field.strip() or f"foto_{len(base)+1}").replace(" ", "_") + ".jpg"
-                with open(nome_foto, "wb") as f:
-                    f.write(foto_camera.getbuffer())
-                foto_salva = nome_foto
-
-            registro = {
-                "numero": numero,
-                "primeiro_nome": primeiro_nome,
-                "ultimo_nome": ultimo_nome,
-                "data_nascimento": data_nascimento,
-                "comuna_distrito": comuna_distrito,
-                "municipio": municipio,
-                "provincia": provincia,
-                "bi_numero": bi_numero,
-                "arquivo_identificacao": arquivo_identificacao,
-                "estado_civil": estado_civil,
-                "cartao": cartao,
-                "grupo": grupo,
-                "local_trabalho": local_trabalho,
-                "habilitacoes": habilitacoes,
-                "profissao": profissao,
-                "ocupacao": ocupacao,
-                "morada": morada,
-                "comuna": comuna,
-                "bairro": bairro,
-                "telefone": telefone,
-                "nome_pai": nome_pai,
-                "nome_mae": nome_mae,
-                "nome_conjuge": nome_conjuge,
-                "profissao_conjuge": profissao_conjuge,
-                "estuda": estuda,
-                "estuda_onde": estuda_onde,
-                "linguas": linguas,
-                "estrangeiro": estrangeiro,
-                "foto_path": foto_salva,
-                "cap": cap_field
-            }
-            if not registro["primeiro_nome"] or not registro["ultimo_nome"] or not registro["cap"]:
+            if not primeiro_nome or not ultimo_nome or not cap_field.strip():
                 st.error("Preencha pelo menos: Nome(s), Último Nome e Nº CAP")
             else:
+                # salvar foto se foi tirada
+                foto_salva = "foto_generica.jpg"
+                if foto_camera is not None:
+                    nome_foto = f"{cap_field.strip().upper()}_{datetime_now_str()}.jpg"
+                    try:
+                        with open(nome_foto, "wb") as f:
+                            f.write(foto_camera.getbuffer())
+                        foto_salva = nome_foto
+                    except Exception:
+                        foto_salva = "foto_generica.jpg"
+
+                registro = {
+                    "primeiro_nome": primeiro_nome,
+                    "ultimo_nome": ultimo_nome,
+                    "data_nascimento": data_nascimento,
+                    "bi_numero": bi_numero,
+                    "arquivo_identificacao": arquivo_identificacao,
+                    "estado_civil": estado_civil,
+                    "local_trabalho": local_trabalho,
+                    "habilitacoes": habilitacoes,
+                    "profissao": profissao,
+                    "municipio": municipio,
+                    "comuna": comuna,
+                    "bairro": bairro,
+                    "telefone": telefone,
+                    "nome_pai": nome_pai,
+                    "nome_mae": nome_mae,
+                    "nome_conjuge": nome_conjuge,
+                    "profissao_conjuge": profissao_conjuge,
+                    "estuda": estuda,
+                    "estuda_onde": estuda_onde,
+                    "linguas": linguas,
+                    "estrangeiro": estrangeiro,
+                    "foto_path": foto_salva,
+                    "cap": cap_field.strip().upper()
+                }
                 base, ok, msg = adicionar_militante(base, registro)
                 if ok:
                     st.success(msg)
@@ -131,44 +134,30 @@ elif menu == "Base de Dados":
         st.dataframe(df, use_container_width=True)
 
         st.subheader("Editar um Registo")
-        id_edit = st.text_input("ID do Registo para Editar (ex: 01)")
+        id_edit = st.text_input("ID do Registo para Editar (ex: REG-CAP041-0001)")
         if id_edit:
             militante = next((m for m in base if m.get("id") == id_edit), None)
             if militante:
-                edit_cols = st.columns(2)
-                with edit_cols[0]:
-                    novo_primeiro = st.text_input("Nome(s) próprio(s)", militante.get("primeiro_nome",""))
-                    novo_ultimo = st.text_input("Último nome", militante.get("ultimo_nome",""))
-                    novo_cap = st.text_input("Nº CAP", militante.get("cap",""))
-                    novo_telefone = st.text_input("Telefone", militante.get("telefone",""))
-                    novo_cartao = st.text_input("Nº Cartão", militante.get("cartao",""))
-                with edit_cols[1]:
-                    novo_municipio = st.selectbox("Município", list(localidades.keys()), index=list(localidades.keys()).index(militante.get("municipio")) if militante.get("municipio") in localidades else 0)
-                    comunas_list = obter_comunas_por_municipio(novo_municipio, localidades)
-                    if comunas_list:
-                        novo_comuna = st.selectbox("Comuna", comunas_list, index=comunas_list.index(militante.get("comuna")) if militante.get("comuna") in comunas_list else 0)
-                    else:
-                        novo_comuna = st.text_input("Comuna (manual)", militante.get("comuna",""))
-                    novo_bairro = st.text_input("Bairro", militante.get("bairro",""))
-
-                if st.button("💾 Aplicar Alterações"):
-                    novos = {
-                        "primeiro_nome": novo_primeiro,
-                        "ultimo_nome": novo_ultimo,
-                        "cap": novo_cap,
-                        "telefone": novo_telefone,
-                        "municipio": novo_municipio,
-                        "comuna": novo_comuna,
-                        "bairro": novo_bairro
-                    }
-                    atualizar_registro(base, id_edit, novos)
-                    st.success("Registo atualizado!")
-                    st.experimental_rerun()
+                # mostrar todos os campos editáveis (duas colunas)
+                with st.form("form_edit"):
+                    cols = st.columns(2)
+                    novos = {}
+                    # percorre keys ordenadas para apresentação
+                    keys_show = ["primeiro_nome","ultimo_nome","cap","data_nascimento","bi_numero","estado_civil","local_trabalho","habilitacoes","profissao","ocupacao","morada","municipio","comuna","bairro","telefone","nome_pai","nome_mae","nome_conjuge","profissao_conjuge","estuda","estuda_onde","linguas","estrangeiro","foto_path"]
+                    for i, key in enumerate(keys_show):
+                        if i % 2 == 0:
+                            novos[key] = cols[0].text_input(key.replace("_"," ").title(), militante.get(key,""))
+                        else:
+                            novos[key] = cols[1].text_input(key.replace("_"," ").title(), militante.get(key,""))
+                    if st.form_submit_button("💾 Aplicar Alterações"):
+                        atualizar_registro(base, id_edit, novos)
+                        st.success("Registo atualizado!")
+                        st.experimental_rerun()
             else:
                 st.error("ID não encontrado.")
 
         st.subheader("Eliminar Registo")
-        id_del = st.text_input("ID do Registo para Eliminar (ex: 01)", key="del")
+        id_del = st.text_input("ID do Registo para Eliminar (ex: REG-CAP041-0001)", key="del")
         if id_del and st.button("🗑️ Eliminar Registo"):
             base = remover_registro(base, id_del)
             st.success("Registo eliminado.")
@@ -225,6 +214,13 @@ elif menu == "Recibos":
             if militante:
                 caminho_pdf = gerar_recibo_militante_pdf(militante)
                 with open(caminho_pdf, "rb") as f:
-                    st.download_button("⬇️ Baixar Recibo PDF", f, file_name=caminho_pdf)
+                    st.download_button("⬇️ Baixar Recibo PDF", f, file_name=os.path.basename(caminho_pdf))
     else:
         st.info("Ainda não existem militantes registrados.")
+
+
+# ----------------------------
+# Pequenas utilidades locais
+# ----------------------------
+def datetime_now_str():
+    return datetime.now().strftime("%Y%m%d%H%M%S")
