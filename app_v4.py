@@ -255,7 +255,7 @@ elif menu == "Recibos":
     if not base:
         st.info("Sem registos.")
     else:
-        escolhas = [f\"{m.get('primeiro_nome','')} {m.get('ultimo_nome','')} — {m.get('cap','')}\" for m in base]
+        escolhas = [f"{m.get('primeiro_nome','')} {m.get('ultimo_nome','')} — {m.get('cap','')}" for m in base]
         sel = st.selectbox("Selecionar Militante", escolhas)
         if st.button("🧾 Gerar Recibo / Download"):
             idx = escolhas.index(sel)
@@ -263,7 +263,12 @@ elif menu == "Recibos":
             pdf_bytes = gerar_recibo_pdf_bytes(militante)
             if pdf_bytes:
                 st.success("Recibo gerado com sucesso — faça o download abaixo.")
-                st.download_button("⬇️ Baixar Recibo PDF", data=pdf_bytes, file_name=f\"Recibo_{militante.get('cap')}.pdf\", mime=\"application/pdf\")
+                st.download_button(
+                    "⬇️ Baixar Recibo PDF",
+                    data=pdf_bytes,
+                    file_name=f"Recibo_{militante.get('cap')}.pdf",
+                    mime="application/pdf"
+                )
             else:
                 st.error("Erro ao gerar recibo.")
 
